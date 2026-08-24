@@ -34,9 +34,33 @@ if ! command -v dig &> /dev/null; then
     exit 1
 fi
 
+# iterate over each domain in the file and save time taken for DNS resolution to array, show avg, min, max, etc. at the end
 declare -a times
 
+# example of dig output:
+# ╰─❯ dig gbn.pl
+# 
+# ; <<>> DiG 9.20.15 <<>> gbn.pl
+# ;; global options: +cmd
+# ;; Got answer:
+# ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 26471
+# ;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+# 
+# ;; OPT PSEUDOSECTION:
+# ; EDNS: version: 0, flags:; udp: 512
+# ;; QUESTION SECTION:
+# ;gbn.pl.                                IN      A
+# 
+# ;; ANSWER SECTION:
+# gbn.pl.                 2595    IN      A       193.143.18.18
+# 
+# ;; Query time: 0 msec
+# ;; SERVER: 127.0.0.1#53(127.0.0.1) (UDP)
+# ;; WHEN: Wed Oct 29 23:10:27 CET 2025
+# ;; MSG SIZE  rcvd: 51
+
 FIRST_N=5
+# first test first N domains, don't save results, just print times to console, wait 10 seconds between tests
 echo "Testing first $FIRST_N domains with 10 seconds interval:"
 count=0
 while IFS= read -r domain && [ $count -lt $FIRST_N ]; do
@@ -47,6 +71,7 @@ while IFS= read -r domain && [ $count -lt $FIRST_N ]; do
     sleep 10
 done < "$DOMAINS_FILE"
 
+# test all domains in the file, skip first N already tested, save times to array
 echo "Testing all domains and recording query times:"
 count=0
 while IFS= read -r domain; do
@@ -54,8 +79,10 @@ while IFS= read -r domain; do
     if [ $count -le $FIRST_N ]; then
         continue
     fi
+    # perform DNS lookup and capture output
     output=$(dig "$domain" +time=2 +tries=1)
     
+    # extract query time using grep and awk
     query_time=$(echo "$output" | grep "Query time:" | awk '{print $4}')
     
     if [[ -n "$query_time" ]]; then
