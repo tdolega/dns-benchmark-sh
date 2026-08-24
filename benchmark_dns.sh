@@ -77,13 +77,11 @@ if [ $num_times -gt 0 ]; then
     avg=$((total / num_times))
     
     idx_50=$(( (50 * num_times) / 100 )); [ $idx_50 -ge $num_times ] && idx_50=$((num_times - 1))
-    idx_75=$(( (75 * num_times) / 100 )); [ $idx_75 -ge $num_times ] && idx_75=$((num_times - 1))
     idx_90=$(( (90 * num_times) / 100 )); [ $idx_90 -ge $num_times ] && idx_90=$((num_times - 1))
     idx_95=$(( (95 * num_times) / 100 )); [ $idx_95 -ge $num_times ] && idx_95=$((num_times - 1))
     idx_99=$(( (99 * num_times) / 100 )); [ $idx_99 -ge $num_times ] && idx_99=$((num_times - 1))
     
     p50=${sorted_times[$idx_50]}
-    p75=${sorted_times[$idx_75]}
     p90=${sorted_times[$idx_90]}
     p95=${sorted_times[$idx_95]}
     p99=${sorted_times[$idx_99]}
@@ -93,13 +91,12 @@ if [ $num_times -gt 0 ]; then
     echo "Minimum query time: ${min} ms"
     echo "Maximum query time: ${max} ms"
     echo "p50 query time: ${p50} ms"
-    echo "p75 query time: ${p75} ms"
     echo "p90 query time: ${p90} ms"
     echo "p95 query time: ${p95} ms"
     echo "p99 query time: ${p99} ms"
     
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    JSON_STRING="{\"timestamp\":\"${TIMESTAMP}\",\"hostname\":\"${HOSTNAME}\",\"total_requests\":${num_times},\"min\":${min},\"max\":${max},\"avg\":${avg},\"p50\":${p50},\"p75\":${p75},\"p90\":${p90},\"p95\":${p95},\"p99\":${p99}}"
+    JSON_STRING="{\"timestamp\":\"${TIMESTAMP}\",\"hostname\":\"${HOSTNAME}\",\"total_requests\":${num_times},\"min\":${min},\"max\":${max},\"avg\":${avg},\"p50\":${p50},\"p90\":${p90},\"p95\":${p95},\"p99\":${p99}}"
     
     echo "$JSON_STRING" >> "$RESULTS_FILE"
     echo "Results successfully appended to $RESULTS_FILE"
