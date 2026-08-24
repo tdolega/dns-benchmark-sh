@@ -23,9 +23,9 @@ Both scripts come with a built-in help message. You can view it by running:
 First, you need to prepare the file with a sample of random domains. Run the script:
 
 ```bash
-./prepare_benchmark_file.sh [INPUT_CSV] [OUTPUT_TXT] [NUM_DOMAINS]
+./prepare_benchmark_file.sh [INPUT_CSV] [OUTPUT_TXT] [NUM_DOMAINS] [SEED] [SKEW]
 ```
-If you don't provide arguments, the script will use the defaults: `top-1m.csv`, `domains.txt`, and `1000`.
+If you don't provide arguments, the script will use the defaults: `top-1m.csv`, `domains.txt`, `1000`, `random` (for seed), and `1.0` (for skew). A skew of `0.0` gives an even, uniform random sample. A higher skew (e.g., `1.0` or `2.0`) gives proportionally higher priority to the domains at the top of the list.
 
 ### 2. Run the benchmark
 Next, run the main testing script:
