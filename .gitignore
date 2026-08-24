@@ -1,0 +1,6 @@
+# Zignoruj wygenerowane pliki wyników
+results.jsonl
+
+# Zignoruj duży plik CSV oraz wygenerowaną listę domen
+top-1m.csv
+domains.txt
