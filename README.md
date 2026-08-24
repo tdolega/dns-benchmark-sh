@@ -38,8 +38,8 @@ If you don't provide arguments, the script will use the defaults: `domains.txt`,
 The script works in two stages:
 - First, it tests the first 5 domains with 10-second intervals between queries, displaying the resolution time directly in the console.
 - Then, it queries the remaining domains without any delays and records their query times.
-- After the test is completed, the script calculates and displays aggregate statistics in milliseconds: **average**, **minimum**, **maximum**, and several **percentiles/quantiles** (p50, p90, p95, p99).
-- Finally, the results (along with the machine's hostname and timestamp) are appended as a single JSON object to the results file.
+- After the test is completed, the script calculates and displays aggregate statistics in a nice ASCII table: **average**, **minimum**, **maximum**, and percentiles (p50, p90, p99) in milliseconds.
+- Finally, the results (along with the machine's hostname, timestamp, and an **MD5 hash** of the input file) are appended as a single JSON object to the results file. This allows you to easily track which results came from exactly the same domain sample.
 
 ## System requirements
 

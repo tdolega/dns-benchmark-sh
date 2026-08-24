@@ -34,6 +34,8 @@ if ! command -v dig &> /dev/null; then
     exit 1
 fi
 
+INPUT_HASH=$(md5sum "$DOMAINS_FILE" | awk '{print $1}')
+
 # iterate over each domain in the file and save time taken for DNS resolution to array, show avg, min, max, etc. at the end
 declare -a times
 
@@ -61,18 +63,25 @@ declare -a times
 
 FIRST_N=5
 # first test first N domains, don't save results, just print times to console, wait 10 seconds between tests
+echo "=== WARMUP PHASE ==="
 echo "Testing first $FIRST_N domains with 10 seconds interval:"
 count=0
 while IFS= read -r domain && [ $count -lt $FIRST_N ]; do
+    count=$((count + 1))
     output=$(dig "$domain" +time=2 +tries=1)
     query_time=$(echo "$output" | grep "Query time:" | awk '{print $4}')
-    echo "Domain: $domain, Query time: ${query_time} ms"
-    count=$((count + 1))
-    sleep 10
+    
+    printf "[Warmup %d/%d] %-30s : %s ms\n" "$count" "$FIRST_N" "$domain" "${query_time:-N/A}"
+    
+    if [ $count -lt $FIRST_N ]; then
+        sleep 10
+    fi
 done < "$DOMAINS_FILE"
 
 # test all domains in the file, skip first N already tested, save times to array
-echo "Testing all domains and recording query times:"
+echo ""
+echo "=== BENCHMARK PHASE ==="
+echo "Testing all remaining domains and recording query times..."
 count=0
 while IFS= read -r domain; do
     count=$((count + 1))
@@ -90,6 +99,9 @@ while IFS= read -r domain; do
     fi
 done < "$DOMAINS_FILE"
 
+echo "Done."
+echo ""
+
 num_times=${#times[@]}
 if [ $num_times -gt 0 ]; then
     sorted_times=($(printf '%s\n' "${times[@]}" | sort -n))
@@ -105,27 +117,29 @@ if [ $num_times -gt 0 ]; then
     
     idx_50=$(( (50 * num_times) / 100 )); [ $idx_50 -ge $num_times ] && idx_50=$((num_times - 1))
     idx_90=$(( (90 * num_times) / 100 )); [ $idx_90 -ge $num_times ] && idx_90=$((num_times - 1))
-    idx_95=$(( (95 * num_times) / 100 )); [ $idx_95 -ge $num_times ] && idx_95=$((num_times - 1))
     idx_99=$(( (99 * num_times) / 100 )); [ $idx_99 -ge $num_times ] && idx_99=$((num_times - 1))
     
     p50=${sorted_times[$idx_50]}
     p90=${sorted_times[$idx_90]}
-    p95=${sorted_times[$idx_95]}
     p99=${sorted_times[$idx_99]}
 
-    echo "Total queries: $num_times"
-    echo "Average query time: ${avg} ms"
-    echo "Minimum query time: ${min} ms"
-    echo "Maximum query time: ${max} ms"
-    echo "p50 query time: ${p50} ms"
-    echo "p90 query time: ${p90} ms"
-    echo "p95 query time: ${p95} ms"
-    echo "p99 query time: ${p99} ms"
+    echo "+------------------------+-------------------+"
+    echo "| Metric                 | Value             |"
+    echo "+------------------------+-------------------+"
+    printf "| %-22s | %-17s |\n" "Total queries" "$num_times"
+    printf "| %-22s | %-17s |\n" "Average query time" "${avg} ms"
+    printf "| %-22s | %-17s |\n" "Minimum query time" "${min} ms"
+    printf "| %-22s | %-17s |\n" "Maximum query time" "${max} ms"
+    printf "| %-22s | %-17s |\n" "p50 query time" "${p50} ms"
+    printf "| %-22s | %-17s |\n" "p90 query time" "${p90} ms"
+    printf "| %-22s | %-17s |\n" "p99 query time" "${p99} ms"
+    echo "+------------------------+-------------------+"
     
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    JSON_STRING="{\"timestamp\":\"${TIMESTAMP}\",\"hostname\":\"${HOSTNAME}\",\"total_requests\":${num_times},\"min\":${min},\"max\":${max},\"avg\":${avg},\"p50\":${p50},\"p90\":${p90},\"p95\":${p95},\"p99\":${p99}}"
+    JSON_STRING="{\"timestamp\":\"${TIMESTAMP}\",\"hostname\":\"${HOSTNAME}\",\"input_hash\":\"${INPUT_HASH}\",\"total_requests\":${num_times},\"min\":${min},\"max\":${max},\"avg\":${avg},\"p50\":${p50},\"p90\":${p90},\"p99\":${p99}}"
     
     echo "$JSON_STRING" >> "$RESULTS_FILE"
+    echo ""
     echo "Results successfully appended to $RESULTS_FILE"
 else
     echo "No valid query times recorded."
