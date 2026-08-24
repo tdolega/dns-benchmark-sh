@@ -67,6 +67,7 @@ echo "=== WARMUP PHASE ==="
 echo "Testing first $FIRST_N domains with 10 seconds interval:"
 count=0
 while IFS= read -r domain && [ $count -lt $FIRST_N ]; do
+    domain="${domain//$'\r'/}"
     count=$((count + 1))
     output=$(dig "$domain" +time=2 +tries=1)
     query_time=$(echo "$output" | grep "Query time:" | awk '{print $4}')
@@ -84,6 +85,7 @@ echo "=== BENCHMARK PHASE ==="
 echo "Testing all remaining domains and recording query times..."
 count=0
 while IFS= read -r domain; do
+    domain="${domain//$'\r'/}"
     count=$((count + 1))
     if [ $count -le $FIRST_N ]; then
         continue
