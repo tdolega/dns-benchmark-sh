@@ -2,15 +2,41 @@
 
 set -uo pipefail
 
-DOMAINS_FILE="domains.txt"
-RESULTS_FILE="results.jsonl"
+show_help() {
+    echo "Usage: $0 [DOMAINS_FILE] [RESULTS_FILE]"
+    echo ""
+    echo "Runs DNS benchmarks for a list of domains."
+    echo ""
+    echo "Arguments:"
+    echo "  DOMAINS_FILE  Path to the text file containing domain names (default: domains.txt)"
+    echo "  RESULTS_FILE  Path to save the JSONL results (default: results.jsonl)"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help    Show this help message and exit"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+DOMAINS_FILE="${1:-domains.txt}"
+RESULTS_FILE="${2:-results.jsonl}"
 HOSTNAME=$(hostname)
 
-# iterate over each domain in the file and save time taken for DNS resolution to array, show avg, min, max, and percentiles at the end
+if [ ! -f "$DOMAINS_FILE" ]; then
+    echo "Error: Domains file '$DOMAINS_FILE' not found!" >&2
+    exit 1
+fi
+
+if ! command -v dig &> /dev/null; then
+    echo "Error: 'dig' command not found. Please install dnsutils/bind-utils." >&2
+    exit 1
+fi
+
 declare -a times
 
 FIRST_N=5
-# first test first N domains, don't save results, just print times to console, wait 10 seconds between tests
 echo "Testing first $FIRST_N domains with 10 seconds interval:"
 count=0
 while IFS= read -r domain && [ $count -lt $FIRST_N ]; do
@@ -21,7 +47,6 @@ while IFS= read -r domain && [ $count -lt $FIRST_N ]; do
     sleep 10
 done < "$DOMAINS_FILE"
 
-# test all domains in the file, skip first N already tested, save times to array
 echo "Testing all domains and recording query times:"
 count=0
 while IFS= read -r domain; do
@@ -29,10 +54,8 @@ while IFS= read -r domain; do
     if [ $count -le $FIRST_N ]; then
         continue
     fi
-    # perform DNS lookup and capture output
     output=$(dig "$domain" +time=2 +tries=1)
     
-    # extract query time using grep and awk
     query_time=$(echo "$output" | grep "Query time:" | awk '{print $4}')
     
     if [[ -n "$query_time" ]]; then
@@ -40,10 +63,8 @@ while IFS= read -r domain; do
     fi
 done < "$DOMAINS_FILE"
 
-# calculate stats
 num_times=${#times[@]}
 if [ $num_times -gt 0 ]; then
-    # Sort the array numerically
     sorted_times=($(printf '%s\n' "${times[@]}" | sort -n))
     
     total=0
@@ -55,7 +76,6 @@ if [ $num_times -gt 0 ]; then
     max=${sorted_times[$((num_times - 1))]}
     avg=$((total / num_times))
     
-    # Calculate percentiles
     idx_50=$(( (50 * num_times) / 100 )); [ $idx_50 -ge $num_times ] && idx_50=$((num_times - 1))
     idx_75=$(( (75 * num_times) / 100 )); [ $idx_75 -ge $num_times ] && idx_75=$((num_times - 1))
     idx_90=$(( (90 * num_times) / 100 )); [ $idx_90 -ge $num_times ] && idx_90=$((num_times - 1))
