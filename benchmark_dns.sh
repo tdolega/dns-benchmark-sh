@@ -3,13 +3,14 @@
 set -uo pipefail
 
 show_help() {
-    echo "Usage: $0 [DOMAINS_FILE] [RESULTS_FILE]"
+    echo "Usage: $0 [DOMAINS_FILE] [RESULTS_FILE] [DNS_SERVER]"
     echo ""
     echo "Runs DNS benchmarks for a list of domains."
     echo ""
     echo "Arguments:"
     echo "  DOMAINS_FILE  Path to the text file containing domain names (default: domains.txt)"
     echo "  RESULTS_FILE  Path to save the JSONL results (default: results.jsonl)"
+    echo "  DNS_SERVER    DNS server to use for queries (default: system default)"
     echo ""
     echo "Options:"
     echo "  -h, --help    Show this help message and exit"
@@ -22,7 +23,13 @@ fi
 
 DOMAINS_FILE="${1:-domains.txt}"
 RESULTS_FILE="${2:-results.jsonl}"
+DNS_SERVER="${3:-}"
 HOSTNAME=$(hostname)
+
+DIG_ARGS=("+time=2" "+tries=1")
+if [ -n "$DNS_SERVER" ]; then
+    DIG_ARGS=("@$DNS_SERVER" "${DIG_ARGS[@]}")
+fi
 
 if [ ! -f "$DOMAINS_FILE" ]; then
     echo "Error: Domains file '$DOMAINS_FILE' not found!" >&2
@@ -69,7 +76,7 @@ count=0
 while IFS= read -r domain && [ $count -lt $FIRST_N ]; do
     domain="${domain//$'\r'/}"
     count=$((count + 1))
-    output=$(dig "$domain" +time=2 +tries=1)
+    output=$(dig "$domain" "${DIG_ARGS[@]}")
     query_time=$(echo "$output" | grep "Query time:" | awk '{print $4}')
     
     printf "[Warmup %d/%d] %-30s : %s ms\n" "$count" "$FIRST_N" "$domain" "${query_time:-N/A}"
@@ -91,7 +98,7 @@ while IFS= read -r domain; do
         continue
     fi
     # perform DNS lookup and capture output
-    output=$(dig "$domain" +time=2 +tries=1)
+    output=$(dig "$domain" "${DIG_ARGS[@]}")
     
     # extract query time using grep and awk
     query_time=$(echo "$output" | grep "Query time:" | awk '{print $4}')
@@ -138,7 +145,7 @@ if [ $num_times -gt 0 ]; then
     echo "+------------------------+-------------------+"
     
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    JSON_STRING="{\"timestamp\":\"${TIMESTAMP}\",\"hostname\":\"${HOSTNAME}\",\"input_hash\":\"${INPUT_HASH}\",\"total_requests\":${num_times},\"min\":${min},\"max\":${max},\"avg\":${avg},\"p50\":${p50},\"p90\":${p90},\"p99\":${p99}}"
+    JSON_STRING="{\"timestamp\":\"${TIMESTAMP}\",\"hostname\":\"${HOSTNAME}\",\"dns_server\":\"${DNS_SERVER:-default}\",\"input_hash\":\"${INPUT_HASH}\",\"total_requests\":${num_times},\"min\":${min},\"max\":${max},\"avg\":${avg},\"p50\":${p50},\"p90\":${p90},\"p99\":${p99}}"
     
     echo "$JSON_STRING" >> "$RESULTS_FILE"
     echo ""
